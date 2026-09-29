@@ -1,0 +1,42 @@
+/* The receipt page. Same look as the receipt the ioPOS server renders, in the shop's brand color:
+   receipt.js sets one of the brand-* classes below on <html> (caramel when there's none). */
+:root{--brand:#a84e0c;--bg:#f2f2f7;--card:#fff;--text:#1c1c1e;--muted:#6c6c70;--line:#e5e5ea}
+:root.brand-evergreen{--brand:#0b5e46}:root.brand-cherry{--brand:#c81e3f}:root.brand-plum{--brand:#a13f9b}
+:root.brand-indigo{--brand:#515bca}:root.brand-ocean{--brand:#0a6ba8}:root.brand-teal{--brand:#047373}
+:root.brand-forest{--brand:#137738}:root.brand-graphite{--brand:#606773}
+@media (prefers-color-scheme:dark){
+  :root{--brand:#c4611d;--bg:#000;--card:#1c1c1e;--text:#f2f2f7;--muted:#a1a1a6;--line:#38383a}
+  :root.brand-evergreen{--brand:#1a8a64}:root.brand-cherry{--brand:#de3951}:root.brand-plum{--brand:#b553ae}
+  :root.brand-indigo{--brand:#616edf}:root.brand-ocean{--brand:#0e7ec4}:root.brand-teal{--brand:#078787}
+  :root.brand-forest{--brand:#2d8949}:root.brand-graphite{--brand:#727985}
+}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:100%/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif}
+[hidden]{display:none!important}
+.receipt{max-width:30rem;margin:0 auto;background:var(--card);min-height:100vh}
+.brand{background:var(--brand);color:#fff;padding:2rem 1.25rem 1.5rem}
+.brand h1{margin:0 0 .25rem;font-size:1.5rem;line-height:1.2;overflow-wrap:anywhere}
+.brand p{margin:0;opacity:.9;font-size:.95rem;overflow-wrap:anywhere}
+main{padding:0 1.25rem 1rem}
+section{padding:1rem 0;border-bottom:1px solid var(--line)}
+.summary{text-align:center}
+.summary p{margin:.15rem 0}
+.thanks{font-weight:600}
+.total{font-size:2.25rem;font-weight:700;font-variant-numeric:tabular-nums}
+.meta,.detail{color:var(--muted);font-size:.9rem}
+.status{display:inline-block;margin-top:.5rem!important;padding:.1rem .6rem;border-radius:1rem;font-size:.8rem;font-weight:700;color:#b25000;background:rgba(255,149,0,.18)}
+.lines{list-style:none;margin:0;padding:0}
+.lines li+li{margin-top:.6rem}
+.detail{margin:.1rem 0 0 1.9rem;overflow-wrap:anywhere}
+.row{display:flex;justify-content:space-between;gap:1rem}
+.row>span:first-child{overflow-wrap:anywhere}
+.row+.row{margin-top:.3rem}
+.amount{white-space:nowrap;font-variant-numeric:tabular-nums}
+.qty{color:var(--muted)}
+.grand{font-weight:700;font-size:1.1rem}
+.message{padding:4rem 1.5rem;text-align:center}
+.message h1{font-size:1.4rem}
+.message p{color:var(--muted)}
+.message button{font:inherit;font-weight:600;color:#fff;background:var(--brand);border:0;border-radius:999px;padding:.7rem 1.4rem;margin-top:.5rem;cursor:pointer}
+footer{padding:1.5rem 1.25rem 2.5rem;text-align:center;color:var(--muted);font-size:.85rem}
+footer a{color:inherit}

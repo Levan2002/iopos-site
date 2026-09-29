@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<!-- The token in the address is the key to the receipt: never send it on as a referrer. -->
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src https://leneddzaijxgvidtvwid.supabase.co; base-uri 'none'; form-action 'none'">
+<title>Your receipt · ioPOS</title>
+<link rel="icon" href="/iopos-site/icon.png">
+<link rel="stylesheet" href="/iopos-site/receipt/receipt.css">
+<script type="module" src="/iopos-site/receipt/receipt.js"></script>
+</head>
+<body>
+<div class="receipt">
+  <div id="loading" class="message" role="status"><p>Loading your receipt…</p></div>
+  <div id="content" hidden></div>
+  <noscript><div class="message"><h1>Turn on JavaScript</h1><p>Your browser needs JavaScript to show this receipt.</p></div></noscript>
+  <footer><p><a href="/iopos-site/">Powered by ioPOS</a> · <a href="/iopos-site/privacy/">Privacy</a></p></footer>
+</div>
+</body>
+</html>

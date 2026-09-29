@@ -15,10 +15,11 @@
 </head>
 <body>
 <div class="receipt">
-  <div id="loading" class="message" role="status"><p>Loading your receipt…</p></div>
+  <div id="loading" class="message" role="status"><p data-text="loading">Loading your receipt…</p></div>
   <div id="content" hidden></div>
-  <noscript><div class="message"><h1>Turn on JavaScript</h1><p>Your browser needs JavaScript to show this receipt.</p></div></noscript>
-  <footer><p><a href="/iopos-site/">Powered by ioPOS</a> · <a href="/iopos-site/privacy/">Privacy</a></p></footer>
+  <noscript><div class="message"><h1>Turn on JavaScript</h1><p>Your browser needs JavaScript to show this receipt.</p>
+    <p lang="es">Active JavaScript: su navegador lo necesita para mostrar este recibo.</p></div></noscript>
+  <footer><p><a href="/iopos-site/" data-text="poweredBy">Powered by ioPOS</a> · <a href="/iopos-site/privacy/" data-text="privacy">Privacy</a></p></footer>
 </div>
 </body>
 </html>

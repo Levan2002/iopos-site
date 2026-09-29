@@ -5,12 +5,117 @@
 // createElement and textContent only (never as markup), and the brand color is one of a fixed set
 // of CSS classes. The Content-Security-Policy in index.html allows only this script, the page's
 // stylesheet and requests to the ioPOS server. Loaded as a module: strict, and nothing global.
+//
+// The page is in Spanish when the browser's first language is Spanish, in English otherwise (TEXT).
 
 const RECEIPT_API = "https://leneddzaijxgvidtvwid.supabase.co/functions/v1/receipt";
 // The app makes 43 characters (32 random bytes, base64url); the server accepts 32 to 64.
 const TOKEN = /^[A-Za-z0-9_-]{32,64}$/;
 const BRANDS = ["caramel", "evergreen", "cherry", "plum", "indigo", "ocean", "teal", "forest", "graphite"];
-const STATUS = { refunded: "Refunded", partially_refunded: "Partly refunded", voided: "Voided" };
+
+// --- Language -------------------------------------------------------------------------------------
+
+// Spanish when the browser's first language is Spanish, English otherwise. Only this page's own
+// words are translated; everything the shop typed (names, items, discounts) is shown as typed.
+const TEXT = {
+  en: {
+    pageTitle: "Your receipt · ioPOS",
+    loading: "Loading your receipt…",
+    poweredBy: "Powered by ioPOS",
+    privacy: "Privacy",
+    receiptFrom: (name) => `Receipt from ${name}`,
+    thanksName: (name) => `Thanks, ${name}!`,
+    thanks: "Thank you!",
+    order: (number, date) => `Order #${number} · ${date}`,
+    status: { refunded: "Refunded", partially_refunded: "Partly refunded", voided: "Voided" },
+    items: "Items",
+    totals: "Totals",
+    payments: "Payments",
+    subtotal: "Subtotal",
+    discount: "Discount",
+    tax: "Tax",
+    tip: "Tip",
+    total: "Total",
+    cash: "Cash",
+    card: "Card",
+    other: "Other",
+    change: "Change",
+    refundPending: "Refund (processing)",
+    refunded: (date) => `Refunded ${date}`,
+    tryAgain: "Try again",
+    notFoundTitle: "Receipt not found",
+    notFoundText: "This link isn't a receipt. Check that the whole link was copied, or ask the shop to send it again.",
+    notYetTitle: "This receipt isn't here yet",
+    notYetText: "If you just paid, your receipt is probably still on its way from the shop's phone. " +
+      "Try again in a few minutes. If it still doesn't show, check the link or ask the shop to send it again.",
+    errorTitle: "Couldn't load this receipt",
+    errorText: "Check your internet connection, then try again.",
+  },
+  es: {
+    pageTitle: "Su recibo · ioPOS",
+    loading: "Cargando su recibo…",
+    poweredBy: "Con tecnología de ioPOS",
+    privacy: "Privacidad",
+    receiptFrom: (name) => `Recibo de ${name}`,
+    thanksName: (name) => `¡Gracias, ${name}!`,
+    thanks: "¡Gracias!",
+    order: (number, date) => `Pedido #${number} · ${date}`,
+    status: { refunded: "Reembolsado", partially_refunded: "Reembolso parcial", voided: "Anulado" },
+    items: "Artículos",
+    totals: "Totales",
+    payments: "Pagos",
+    subtotal: "Subtotal",
+    discount: "Descuento",
+    tax: "Impuesto",
+    tip: "Propina",
+    total: "Total",
+    cash: "Efectivo",
+    card: "Tarjeta",
+    other: "Otro",
+    change: "Cambio",
+    refundPending: "Reembolso (en proceso)",
+    refunded: (date) => `Reembolsado el ${date}`,
+    tryAgain: "Reintentar",
+    notFoundTitle: "Recibo no encontrado",
+    notFoundText: "Este enlace no es un recibo. Verifique que copió el enlace completo o pida al negocio que se lo envíe de nuevo.",
+    notYetTitle: "Este recibo aún no está disponible",
+    notYetText: "Si acaba de pagar, es probable que su recibo todavía esté en camino desde el celular del negocio. " +
+      "Vuelva a intentarlo en unos minutos. Si aún no aparece, revise el enlace o pida al negocio que se lo envíe de nuevo.",
+    errorTitle: "No se pudo cargar este recibo",
+    errorText: "Revise su conexión a internet y vuelva a intentarlo.",
+  },
+};
+
+/**
+ * The page's language ("en" or "es") and the locale for money and dates: "en-US" in English; in
+ * Spanish the browser's own tag when it names a region ("es-MX"), else "es-US" (ioPOS shops are in
+ * the US, and "es-US" writes dollars as "$7.08").
+ */
+function pickLanguage(nav) {
+  const first = String((nav && nav.languages && nav.languages[0]) || (nav && nav.language) || "");
+  if (!/^es(-|$)/i.test(first)) return { lang: "en", locale: "en-US" };
+  let locale = "es-US";
+  try {
+    const [canonical] = Intl.getCanonicalLocales(first);
+    if (canonical && canonical.includes("-") && Intl.NumberFormat.supportedLocalesOf([canonical]).length) locale = canonical;
+  } catch {
+    // Not a valid language tag: keep es-US.
+  }
+  return { lang: "es", locale };
+}
+
+const { lang: LANG, locale: LOCALE } = pickLanguage(typeof navigator === "undefined" ? null : navigator);
+const T = TEXT[LANG];
+
+/** The page's own words in the chosen language: <html lang>, the title and [data-text] elements. */
+function translateStaticText() {
+  document.documentElement.lang = LANG;
+  document.title = T.pageTitle;
+  for (const node of document.querySelectorAll("[data-text]")) {
+    const text = T[node.getAttribute("data-text")];
+    if (typeof text === "string") node.textContent = text;
+  }
+}
 
 // --- DOM ------------------------------------------------------------------------------------------
 
@@ -32,7 +137,7 @@ function row(label, amount, className) {
 
 function money(minor, currency) {
   try {
-    const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency });
+    const formatter = new Intl.NumberFormat(LOCALE, { style: "currency", currency });
     const digits = formatter.resolvedOptions().maximumFractionDigits;
     return formatter.format(minor / 10 ** digits);
   } catch {
@@ -44,13 +149,13 @@ function inZone(iso, timeZone, options) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   try {
-    return new Intl.DateTimeFormat("en-US", { ...options, timeZone: timeZone || "UTC" }).format(date);
+    return new Intl.DateTimeFormat(LOCALE, { ...options, timeZone: timeZone || "UTC" }).format(date);
   } catch {
-    return new Intl.DateTimeFormat("en-US", { ...options, timeZone: "UTC" }).format(date);
+    return new Intl.DateTimeFormat(LOCALE, { ...options, timeZone: "UTC" }).format(date);
   }
 }
 
-/** "Sep 29, 2026, 2:30 PM CDT" in the shop's time zone. */
+/** "Sep 29, 2026, 2:30 PM CDT" (in Spanish "29 sept 2026, 2:30 p.m. CDT") in the shop's time zone. */
 function dateTime(iso, timeZone) {
   return inZone(iso, timeZone, {
     year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
@@ -74,14 +179,14 @@ function lineName(line) {
 }
 
 function paymentLabel(payment) {
-  if (payment.tender === "cash") return "Cash";
+  if (payment.tender === "cash") return T.cash;
   if (payment.tender === "card_present") {
     const brand = payment.card_brand
       ? payment.card_brand.charAt(0).toUpperCase() + payment.card_brand.slice(1).toLowerCase()
-      : "Card";
+      : T.card;
     return payment.card_last4 ? `${brand} •••• ${payment.card_last4}` : brand;
   }
-  return "Other";
+  return T.other;
 }
 
 // --- Rendering ------------------------------------------------------------------------------------
@@ -109,14 +214,14 @@ function receipt(data) {
 
   const summary = el("section", "summary");
   summary.append(
-    el("p", "thanks", data.customer_first_name ? `Thanks, ${data.customer_first_name}!` : "Thank you!"),
+    el("p", "thanks", data.customer_first_name ? T.thanksName(data.customer_first_name) : T.thanks),
     el("p", "total", amount(order.total_minor)),
-    el("p", "meta", `Order #${order.number} · ${dateTime(order.created_at, business.timezone)}`),
+    el("p", "meta", T.order(order.number, dateTime(order.created_at, business.timezone))),
   );
-  if (STATUS[order.status]) summary.append(el("p", "status", STATUS[order.status]));
+  if (Object.prototype.hasOwnProperty.call(T.status, order.status)) summary.append(el("p", "status", T.status[order.status]));
 
   const items = el("section");
-  items.setAttribute("aria-label", "Items");
+  items.setAttribute("aria-label", T.items);
   const list = el("ul", "lines");
   for (const line of lines) {
     const label = el("span");
@@ -131,37 +236,37 @@ function receipt(data) {
   items.append(list);
 
   const totals = el("section", "totals");
-  totals.setAttribute("aria-label", "Totals");
-  totals.append(row("Subtotal", amount(order.subtotal_minor)));
+  totals.setAttribute("aria-label", T.totals);
+  totals.append(row(T.subtotal, amount(order.subtotal_minor)));
   if (order.discount_minor > 0) {
     // Named discounts when they add up to the order's discount; one "Discount" row otherwise.
     const named = discounts.reduce((sum, d) => sum + d.amount_minor, 0) === order.discount_minor;
     if (named) {
       for (const d of discounts) totals.append(row(d.name, minus(d.amount_minor)));
     } else {
-      totals.append(row("Discount", minus(order.discount_minor)));
+      totals.append(row(T.discount, minus(order.discount_minor)));
     }
   }
-  totals.append(row("Tax", amount(order.tax_minor)));
-  if (order.tip_minor > 0) totals.append(row("Tip", amount(order.tip_minor)));
-  totals.append(row("Total", amount(order.total_minor), "grand"));
+  totals.append(row(T.tax, amount(order.tax_minor)));
+  if (order.tip_minor > 0) totals.append(row(T.tip, amount(order.tip_minor)));
+  totals.append(row(T.total, amount(order.total_minor), "grand"));
 
   const main = el("main");
   main.append(summary, items, totals);
 
   if (payments.length || refunds.length) {
     const paid = el("section", "totals");
-    paid.setAttribute("aria-label", "Payments");
+    paid.setAttribute("aria-label", T.payments);
     for (const payment of payments) {
       const cash = payment.tender === "cash";
       const given = cash && payment.cash_tendered_minor !== null ? payment.cash_tendered_minor : payment.amount_minor;
       paid.append(row(paymentLabel(payment), amount(given)));
-      if (cash && payment.change_minor > 0) paid.append(row("Change", amount(payment.change_minor)));
+      if (cash && payment.change_minor > 0) paid.append(row(T.change, amount(payment.change_minor)));
     }
     for (const refund of refunds) {
       const label = refund.status === "pending"
-        ? "Refund (processing)"
-        : `Refunded ${dateOnly(refund.created_at, business.timezone)}`;
+        ? T.refundPending
+        : T.refunded(dateOnly(refund.created_at, business.timezone));
       paid.append(row(label, minus(refund.amount_minor)));
     }
     main.append(paid);
@@ -169,7 +274,7 @@ function receipt(data) {
 
   const brand = BRANDS.includes(business.brand_color) ? business.brand_color : "caramel";
   document.documentElement.classList.add(`brand-${brand}`);
-  document.title = `Receipt from ${business.name}`;
+  document.title = T.receiptFrom(business.name);
   const fragment = document.createDocumentFragment();
   fragment.append(header(business), main);
   return fragment;
@@ -179,7 +284,7 @@ function message(title, text, retry) {
   const box = el("div", "message");
   box.append(el("h1", null, title), el("p", null, text));
   if (retry) {
-    const button = el("button", null, "Try again");
+    const button = el("button", null, T.tryAgain);
     button.type = "button";
     button.addEventListener("click", retry);
     box.append(button);
@@ -199,8 +304,7 @@ function show(node) {
 async function load() {
   const token = new URLSearchParams(location.search).get("t") || "";
   if (!TOKEN.test(token)) {
-    show(message("Receipt not found",
-      "This link isn't a receipt. Check that the whole link was copied, or ask the shop to send it again."));
+    show(message(T.notFoundTitle, T.notFoundText));
     return;
   }
   document.getElementById("content").hidden = true;
@@ -209,20 +313,23 @@ async function load() {
     const url = `${RECEIPT_API}?t=${encodeURIComponent(token)}&format=json`;
     const response = await fetch(url, { credentials: "omit", referrerPolicy: "no-referrer" });
     if (response.status === 404) {
-      show(message("This receipt isn't here yet",
-        "If you just paid, your receipt is probably still on its way from the shop's phone. " +
-          "Try again in a few minutes. If it still doesn't show, check the link or ask the shop to send it again.", load));
+      show(message(T.notYetTitle, T.notYetText, load));
       return;
     }
     if (!response.ok) throw new Error(`status ${response.status}`);
     show(receipt(await response.json()));
   } catch {
-    show(message("Couldn't load this receipt", "Check your internet connection, then try again.", load));
+    show(message(T.errorTitle, T.errorText, load));
   }
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", load);
-} else {
+function start() {
+  translateStaticText();
   load();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", start);
+} else {
+  start();
 }
